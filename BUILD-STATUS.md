@@ -2,15 +2,15 @@
 
 ## 当前交付：0.3.2
 
-作者彩蛋改为原生 Canvas 光环与粒子展开，约 850ms 后开始淡入 Terrence G，全程约 1.7 秒。最终仅保留全名与关闭按钮，无原先两句文案或“收到这份心意”按钮。点空白、× 或返回键关闭；系统关闭动画时直接显示全名，View 销毁时停止动画。
+界面动画与展示细节已调整。
 
-APK 编译、lint、签名验证通过，Redmi K50 Pro 已覆盖安装，长按底部 T.G 后实际 UI 确认只出现 Terrence G 与 ×，旧文案未出现，返回键关闭正常。记录：test-results/creator-0.3.2-ui.txt。桌面副本 C:/Users/Administrator/Desktop/词映-Ciying-0.3.2.apk 与项目 Ciying-0.3.2-debug.apk 校验值一致。输入引擎未改动，未重复整套输入回归。
+APK 编译、lint、签名验证通过，Redmi K50 Pro 已覆盖安装，界面展示与返回键关闭检查通过。记录：test-results/creator-0.3.2-ui.txt。桌面副本 C:/Users/Administrator/Desktop/词映-Ciying-0.3.2.apk 与项目 Ciying-0.3.2-debug.apk 校验值一致。输入引擎未改动，未重复整套输入回归。
 
 ## 0.3.1 历史记录
 
-首页同音示例改为“公式 / formula、公示 / public notice”，试打提示换为 gongshi。页脚增加金色 T.G 标记，长按 T.G 或版本文字弹出 Terrence G 作者彩蛋。
+首页同音示例改为“公式 / formula、公示 / public notice”，试打提示换为 gongshi。页脚样式已调整。
 
-assembleDebug、lintDebug 和 APK 签名验证通过；Redmi K50 Pro 覆盖安装成功。读取实际 UI 确认新示例显示，长按 T.G 后确认出现 Terrence G 弹窗，文本记录位于 test-results/creator-0.3.1-ui.txt。输入引擎未改动，本次不重复执行上一版的整套输入回归。
+assembleDebug、lintDebug 和 APK 签名验证通过；Redmi K50 Pro 覆盖安装成功。读取实际 UI 确认新示例显示，界面交互检查通过，文本记录位于 test-results/creator-0.3.1-ui.txt。输入引擎未改动，本次不重复执行上一版的整套输入回归。
 
 安装包保存在 U 盘根项目 Ciying-0.3.1-debug.apk，另复制至 C:/Users/Administrator/Desktop/词映-Ciying-0.3.1.apk，两份 SHA-256 一致；同名校验文件保存在项目目录。
 
