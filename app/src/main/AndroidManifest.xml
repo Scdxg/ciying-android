@@ -1,0 +1,18 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application android:allowBackup="false" android:icon="@drawable/ic_ciying" android:label="词映" android:theme="@style/AppTheme">
+        <activity android:name=".MainActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <service
+            android:name=".CiyingInputMethodService"
+            android:exported="true"
+            android:label="词映输入法"
+            android:permission="android.permission.BIND_INPUT_METHOD">
+            <intent-filter><action android:name="android.view.InputMethod" /></intent-filter>
+            <meta-data android:name="android.view.im" android:resource="@xml/method" />
+        </service>
+    </application>
+</manifest>
