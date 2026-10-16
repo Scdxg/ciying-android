@@ -13,6 +13,9 @@ app/build/
 *.aab
 *.jks
 *.keystore
+*.p12
+*.pfx
+*.pem
 keystore.properties
 signing.properties
 test-results/

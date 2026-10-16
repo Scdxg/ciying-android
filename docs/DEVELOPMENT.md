@@ -38,6 +38,8 @@ macOS / Linux 使用 `bash ./gradlew`。首次构建需要联网下载 Gradle �
 
 ### 正式签名与升级
 
+项目已支持外部私有配置的 release 签名，构建入口见 [正式签名构建](SIGNING.md)。
+
 目前提供的是调试签名测试包。正式版需要创建专用签名密钥，用该密钥签署 release APK，并安全备份密钥与密码；后续更新持续使用同一密钥。签名表示软件发布身份，不等于应用商店审核。
 
 密钥、密码、`keystore.properties` 和 `signing.properties` 不应提交到仓库。可在 Android Studio 通过 Build → Generate Signed Bundle / APK → APK 创建密钥并生成正式签名安装包。

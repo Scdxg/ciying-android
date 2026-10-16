@@ -1,7 +1,18 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
+
+val signingPropertiesFile = providers.gradleProperty("ciyingSigningProperties").orNull
+    ?.let { rootProject.file(it) }
+    ?: providers.environmentVariable("CIYING_SIGNING_PROPERTIES").orNull?.let { file(it) }
+    ?: rootProject.rootDir.parentFile.resolve("Ciying-Signing-Backup/signing.properties")
+val releaseCredentials = Properties().apply {
+    if (signingPropertiesFile.isFile) signingPropertiesFile.inputStream().use { load(it) }
+}
+val hasReleaseCredentials = signingPropertiesFile.isFile
 
 android {
     namespace = "app.ciying.keyboard"
@@ -24,6 +35,30 @@ android {
         targetSdk = 35
         versionCode = 5
         versionName = "0.3.2"
+    }
+
+    signingConfigs {
+        if (hasReleaseCredentials) {
+            create("ciyingRelease") {
+                storeFile = signingPropertiesFile.parentFile.resolve(releaseCredentials.getProperty("storeFile"))
+                storePassword = releaseCredentials.getProperty("storePassword")
+                keyAlias = releaseCredentials.getProperty("keyAlias")
+                keyPassword = releaseCredentials.getProperty("keyPassword")
+                enableV1Signing = true
+                enableV2Signing = true
+            }
+        }
+    }
+    buildTypes {
+        getByName("release") {
+            if (hasReleaseCredentials) signingConfig = signingConfigs.getByName("ciyingRelease")
+        }
+    }
+}
+
+gradle.taskGraph.whenReady {
+    if (allTasks.any { it.project == project && it.name.contains("Release") } && !hasReleaseCredentials) {
+        throw GradleException("Release signing configuration missing. Set CIYING_SIGNING_PROPERTIES to your private signing.properties file.")
     }
 }
 
