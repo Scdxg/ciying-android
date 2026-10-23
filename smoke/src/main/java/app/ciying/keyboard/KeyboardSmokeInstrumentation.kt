@@ -132,7 +132,31 @@ class KeyboardSmokeInstrumentation : Instrumentation() {
             click("s"); expect("s")
             check(find("s") != null) { "Letter key changed after click" }
             click("⌫"); expect("")
+            runOnMainSync { field.setText("abcdefghij"); field.setSelection(10) }
+            val bounds = android.graphics.Rect()
+            find("⌫")!!.getBoundsInScreen(bounds)
+            val down = SystemClock.uptimeMillis()
+            fun touch(action: Int) {
+                val event = android.view.MotionEvent.obtain(down, SystemClock.uptimeMillis(), action,
+                    bounds.exactCenterX(), bounds.exactCenterY(), 0)
+                event.source = android.view.InputDevice.SOURCE_TOUCHSCREEN
+                check(uiAutomation.injectInputEvent(event, true))
+                event.recycle()
+            }
+            touch(android.view.MotionEvent.ACTION_DOWN)
+            SystemClock.sleep(650)
+            touch(android.view.MotionEvent.ACTION_UP)
+            var afterHold = ""
+            runOnMainSync { afterHold = field.text.toString() }
+            check(afterHold.length in 1..8) { "Long delete did not repeat: $afterHold" }
+            SystemClock.sleep(250)
+            runOnMainSync { check(field.text.toString() == afterHold) { "Delete continued after release" }; field.setText("") }
+            results.add("PASS long-delete repeats and stops on release")
             click("n"); click("i")
+            val firstCandidateBounds = android.graphics.Rect()
+            awaitCandidate("@你")!!.getBoundsInScreen(firstCandidateBounds)
+            check(firstCandidateBounds.left < 50) { "Raw pinyin still precedes first candidate" }
+            results.add("PASS first candidate starts candidate row")
             check(find("@你")?.text?.contains("you") == true) { "Chinese/English candidate missing" }
             click("@你"); expect("你")
             click("h"); click("a"); click("o"); click("空格"); expect("你好")

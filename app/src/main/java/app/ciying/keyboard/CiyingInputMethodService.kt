@@ -4,6 +4,7 @@ import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.StateListDrawable
 import android.inputmethodservice.InputMethodService
+import android.view.MotionEvent
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
@@ -18,6 +19,11 @@ class CiyingInputMethodService : InputMethodService() {
     private var dictionary: CandidateDictionary? = null
     private fun dictionary() = dictionary ?: CandidateDictionary(applicationContext).also { dictionary = it }
     private var query: java.util.concurrent.Future<*>? = null
+    private var repeatingDelete: Runnable? = null
+    private fun stopDeleting() {
+        repeatingDelete?.let { handler.removeCallbacks(it) }
+        repeatingDelete = null
+    }
     private var generation = 0
     private var session = 0
     private var committing = false
@@ -39,6 +45,7 @@ class CiyingInputMethodService : InputMethodService() {
     override fun onEvaluateFullscreenMode() = false
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
+        stopDeleting()
         super.onStartInput(attribute, restarting)
         session++
         generation++
@@ -72,6 +79,7 @@ class CiyingInputMethodService : InputMethodService() {
     }
 
     private fun renderKeys() {
+        stopDeleting()
         keyArea.removeAllViews()
         if (symbols) {
             characterRow("1234567890")
@@ -142,7 +150,40 @@ class CiyingInputMethodService : InputMethodService() {
         val letter = if (shifted) ch.uppercaseChar().toString() else ch.toString()
         line.addView(key(letter) { appendPinyin(letter) })
     }
-    private fun deleteKey() = key("⌫", 1.5f, true) { delete() }.apply { contentDescription = "删除" }
+    private fun deleteKey() = key("⌫", 1.5f, true) { delete() }.apply {
+        contentDescription = "删除"
+        setOnTouchListener { view, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    stopDeleting()
+                    val repeat = object : Runnable {
+                        override fun run() {
+                            if (repeatingDelete !== this || !view.isPressed) return
+                            if (!committing) delete()
+                            handler.postDelayed(this, 55L)
+                        }
+                    }
+                    repeatingDelete = repeat
+                    handler.postDelayed(repeat, 350L)
+                    false
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    if (event.x < 0 || event.y < 0 || event.x >= view.width || event.y >= view.height) {
+                        stopDeleting()
+                        view.isPressed = false
+                        true
+                    } else false
+                }
+                MotionEvent.ACTION_UP -> {
+                    val held = event.eventTime - event.downTime >= 350L
+                    stopDeleting()
+                    if (held) { view.isPressed = false; true } else false
+                }
+                MotionEvent.ACTION_CANCEL -> { stopDeleting(); false }
+                else -> false
+            }
+        }
+    }
     private fun key(title: String, weight: Float = 1f, utility: Boolean = false,
                     accent: Boolean = false, action: () -> Unit) = TextView(this).apply {
         text = title
@@ -220,7 +261,7 @@ class CiyingInputMethodService : InputMethodService() {
         val input = composing.toString()
         val context = beforeCursor()
         val correction = !policy.privateInput
-        candidates.addView(label(input, Color.rgb(107, 114, 128)).apply { setOnClickListener { if (!committing) commitRaw() } })
+
         query = worker.submit {
             val result = runCatching { dictionary().lookup(input, context, correction, personalized = correction) }
             handler.post {
@@ -238,6 +279,7 @@ class CiyingInputMethodService : InputMethodService() {
         }
     }
     override fun onFinishInput() {
+        stopDeleting()
         super.onFinishInput()
         session++; generation++; composing.clear(); pendingKeys.clear(); committing = false
         refreshCandidates()
@@ -251,7 +293,12 @@ class CiyingInputMethodService : InputMethodService() {
             refreshCandidates()
         }
     }
+    override fun onFinishInputView(finishingInput: Boolean) {
+        stopDeleting()
+        super.onFinishInputView(finishingInput)
+    }
     override fun onDestroy() {
+        stopDeleting()
         session++; generation++
         query?.cancel(false)
         worker.submit { dictionary?.close() }
