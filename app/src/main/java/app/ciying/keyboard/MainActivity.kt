@@ -141,10 +141,20 @@ class MainActivity : Activity() {
                 dialog.dismiss()
                 if (index == 3) {
                     try {
-                        startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                            type = "image/*"
-                            addCategory(Intent.CATEGORY_OPENABLE)
-                        }, 410)
+                        val picker = if (android.os.Build.VERSION.SDK_INT >= 33) {
+                            Intent(android.provider.MediaStore.ACTION_PICK_IMAGES).apply { type = "image/*" }
+                        } else {
+                            Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+                                .apply { type = "image/*" }
+                        }
+                        try {
+                            startActivityForResult(picker, 410)
+                        } catch (_: android.content.ActivityNotFoundException) {
+                            startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                                type = "image/*"
+                                addCategory(Intent.CATEGORY_OPENABLE)
+                            }, 410)
+                        }
                     } catch (_: android.content.ActivityNotFoundException) {
                         Toast.makeText(this, "未找到照片选择器", Toast.LENGTH_SHORT).show()
                     }
