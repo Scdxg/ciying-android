@@ -2,7 +2,7 @@
 
 ## 下载安装
 
-打开 https://github.com/Scdxg/ciying-android/releases/tag/v0.3.2-beta ，展开 Assets，下载 Ciying-0.3.2-beta.apk。Source code 是源码压缩包，不是安装包。
+打开 https://github.com/Scdxg/ciying-android/releases/tag/v0.3.3-beta ，展开 Assets，下载 Ciying-0.3.3-beta.apk。Source code 是源码压缩包，不是安装包。
 
 下载后在浏览器的下载列表或文件管理器里打开 APK，按系统提示确认安装。若聊天应用不能直接下载，可用浏览器打开链接。普通用户不需要 USB 调试。
 

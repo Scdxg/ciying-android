@@ -2,7 +2,7 @@
 
 Android 离线拼音输入法，在中文候选词旁显示英文释义。
 
-**[下载 0.3.2 测试版](https://github.com/Scdxg/ciying-android/releases/tag/v0.3.2-beta)** · [安装与兼容性](docs/INSTALL.md) · [开发文档](docs/DEVELOPMENT.md)
+**[下载 0.3.3 测试版](https://github.com/Scdxg/ciying-android/releases/tag/v0.3.3-beta)** · [安装与兼容性](docs/INSTALL.md) · [开发文档](docs/DEVELOPMENT.md)
 
 ## 主要功能
 
