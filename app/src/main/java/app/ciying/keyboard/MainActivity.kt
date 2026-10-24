@@ -110,17 +110,10 @@ class MainActivity : Activity() {
         footer.addView(text("开源许可与图片来源", 13f, forest).apply {
             gravity = Gravity.CENTER; setPadding(0, dp(10), 0, dp(10)); setOnClickListener { showLicenses() }
         })
-        val creatorMark = text("T.G", 13f, Color.rgb(151, 126, 68), true).apply {
-            gravity = Gravity.CENTER; letterSpacing = 0.18f
-            setPadding(0, dp(10), 0, dp(10))
-            contentDescription = "T.G，作者彩蛋，长按查看"
-            setOnLongClickListener { showCreatorEgg(); true }
-        }
-        footer.addView(creatorMark)
         val version = packageManager.getPackageInfo(packageName, 0).versionName
         footer.addView(text("词映 $version   ·   好好输入，慢慢认识世界", 11f, muted).apply {
             gravity = Gravity.CENTER
-            setOnLongClickListener { showCreatorEgg(); true }
+
         })
         page.addView(footer)
         setContentView(ScrollView(this).apply { isFillViewport = true; addView(page) })
@@ -143,35 +136,5 @@ class MainActivity : Activity() {
         }
         AlertDialog.Builder(this).setTitle("开源与图片许可").setView(ScrollView(this).apply { addView(content) })
             .setPositiveButton("关闭", null).show()
-    }
-    private fun showCreatorEgg() {
-        val dialog = android.app.Dialog(this, android.R.style.Theme_Material_NoActionBar_Fullscreen)
-        val stage = FrameLayout(this).apply { addView(CreatorRevealView(this@MainActivity), FrameLayout.LayoutParams(-1, -1)) }
-        val name = text("Terrence G", 34f, Color.rgb(240, 228, 193)).apply {
-            gravity = Gravity.CENTER; letterSpacing = 0.07f
-            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
-            alpha = 0f; translationY = dp(18).toFloat(); scaleX = 0.92f; scaleY = 0.92f
-        }
-        stage.addView(name, FrameLayout.LayoutParams(-1, dp(90), Gravity.CENTER))
-        stage.addView(text("×", 30f, Color.rgb(166, 190, 175)).apply {
-            gravity = Gravity.CENTER; contentDescription = "关闭"
-            setOnClickListener { dialog.dismiss() }
-        }, FrameLayout.LayoutParams(dp(52), dp(52), Gravity.TOP or Gravity.END).apply { topMargin = dp(16); rightMargin = dp(12) })
-        stage.setOnClickListener { dialog.dismiss() }
-        dialog.setContentView(stage)
-        dialog.setOnDismissListener { name.animate().cancel() }
-        dialog.show()
-        dialog.window?.apply {
-            setLayout(-1, -1)
-            statusBarColor = Color.rgb(6, 22, 18)
-            navigationBarColor = Color.rgb(6, 22, 18)
-        }
-        if (android.animation.ValueAnimator.areAnimatorsEnabled()) {
-            name.animate().alpha(1f).translationY(0f).scaleX(1f).scaleY(1f)
-                .setStartDelay(850).setDuration(650)
-                .setInterpolator(android.view.animation.DecelerateInterpolator()).start()
-        } else {
-            name.alpha = 1f; name.translationY = 0f; name.scaleX = 1f; name.scaleY = 1f
-        }
     }
 }

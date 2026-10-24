@@ -30,7 +30,6 @@ class CiyingInputMethodService : InputMethodService() {
     private val pendingKeys = java.util.ArrayDeque<() -> Unit>()
     private val composing = StringBuilder()
     private lateinit var candidates: LinearLayout
-    private lateinit var specialDetail: TextView
     private lateinit var keyArea: LinearLayout
     private var english = false
     private var symbols = false
@@ -67,18 +66,11 @@ class CiyingInputMethodService : InputMethodService() {
             setBackgroundColor(Color.rgb(232, 239, 235))
             setPadding(dp(4), 0, dp(4), dp(8))
         }
-        candidates = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+        candidates = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; minimumHeight = dp(48) }
         root.addView(HorizontalScrollView(this).apply {
             isHorizontalScrollBarEnabled = false
             addView(candidates)
-        }, LinearLayout.LayoutParams(-1, dp(48)))
-        specialDetail = TextView(this).apply {
-            textSize = 13f
-            setTextColor(ink)
-            setPadding(dp(12), dp(4), dp(12), dp(8))
-            visibility = View.GONE
-        }
-        root.addView(specialDetail, LinearLayout.LayoutParams(-1, -2))
+        }, LinearLayout.LayoutParams(-1, -2))
         keyArea = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         root.addView(keyArea)
         renderKeys()
@@ -262,7 +254,8 @@ class CiyingInputMethodService : InputMethodService() {
         val request = ++generation
         query?.cancel(false)
         candidates.removeAllViews()
-        if (::specialDetail.isInitialized) specialDetail.visibility = View.GONE
+        candidates.orientation = LinearLayout.HORIZONTAL
+        candidates.layoutParams = android.widget.FrameLayout.LayoutParams(-2, -2)
         if (composing.isEmpty()) {
             candidates.addView(label(if (policy.privateInput) "私密输入 · 不记录选词" else if (english) "英文输入" else "词映 · 让词语照见世界", Color.rgb(96, 121, 107)))
             return
@@ -277,20 +270,36 @@ class CiyingInputMethodService : InputMethodService() {
                 if (request != generation || composing.toString() != input) return@post
                 if (result.isFailure) candidates.addView(label("词库加载失败，请重启词映", ink))
                 val items = result.getOrDefault(emptyList())
-                items.firstOrNull { it.hanzi == "高梓皓" && it.gloss == SPECIAL_GAOZIHAO_TEXT }?.let { special ->
-                    specialDetail.text = "${special.hanzi}：${special.gloss}"
-                    specialDetail.visibility = View.VISIBLE
-                    specialDetail.setOnClickListener {
-                        if (!committing && composing.toString() == input) choose(special)
-                    }
+                val hasSpecial = items.any { it.gloss == SPECIAL_GAOZIHAO_TEXT }
+                if (hasSpecial) {
+                    candidates.orientation = LinearLayout.VERTICAL
+                    candidates.layoutParams = android.widget.FrameLayout.LayoutParams(resources.displayMetrics.widthPixels - dp(8), -2)
                 }
+                var candidateRow = candidates
                 items.forEach { item ->
-                    val base = if (item.gloss.isBlank() || item.gloss == SPECIAL_GAOZIHAO_TEXT) item.hanzi else "${item.hanzi}   ${item.gloss}"
+                    val special = item.gloss == SPECIAL_GAOZIHAO_TEXT
+                    val base = if (special) "${item.hanzi} ${item.gloss}" else if (item.gloss.isBlank()) item.hanzi else "${item.hanzi}   ${item.gloss}"
                     val caption = base + if (item.correctedFrom != null) " · 纠错" else ""
-                    candidates.addView(label(caption, ink).apply {
+                    if (hasSpecial && !special && candidateRow === candidates) {
+                        candidateRow = LinearLayout(this)
+                        candidates.addView(HorizontalScrollView(this).apply {
+                            isHorizontalScrollBarEnabled = false
+                            addView(candidateRow)
+                        }, LinearLayout.LayoutParams(-1, dp(48)))
+                    }
+                    (if (special) candidates else candidateRow).addView(label(caption, ink).apply {
+                        if (special) {
+                            textSize = 13f
+                            setPadding(dp(12), dp(8), dp(12), dp(8))
+                            layoutParams = LinearLayout.LayoutParams(resources.displayMetrics.widthPixels - dp(8), -2)
+                            text = android.text.SpannableString(caption).apply {
+                                setSpan(android.text.style.StyleSpan(android.graphics.Typeface.BOLD), 0, item.hanzi.length, 0)
+                            }
+                        }
                         contentDescription = "${item.hanzi} ${item.gloss}"
                         setOnClickListener { if (!committing && composing.toString() == input) choose(item) }
                     })
+                    if (special) candidateRow = candidates
                 }
             }
         }
@@ -325,7 +334,7 @@ class CiyingInputMethodService : InputMethodService() {
     private fun label(title: String, color: Int) = TextView(this).apply {
         text = title; textSize = 16f; gravity = Gravity.CENTER_VERTICAL
         setTextColor(color); setPadding(dp(12), 0, dp(12), 0)
-        layoutParams = LinearLayout.LayoutParams(-2, -1)
+        layoutParams = LinearLayout.LayoutParams(-2, dp(48))
     }
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
 }
