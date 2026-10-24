@@ -30,6 +30,7 @@ class CiyingInputMethodService : InputMethodService() {
     private val pendingKeys = java.util.ArrayDeque<() -> Unit>()
     private val composing = StringBuilder()
     private lateinit var candidates: LinearLayout
+    private lateinit var specialDetail: TextView
     private lateinit var keyArea: LinearLayout
     private var english = false
     private var symbols = false
@@ -71,6 +72,13 @@ class CiyingInputMethodService : InputMethodService() {
             isHorizontalScrollBarEnabled = false
             addView(candidates)
         }, LinearLayout.LayoutParams(-1, dp(48)))
+        specialDetail = TextView(this).apply {
+            textSize = 13f
+            setTextColor(ink)
+            setPadding(dp(12), dp(4), dp(12), dp(8))
+            visibility = View.GONE
+        }
+        root.addView(specialDetail, LinearLayout.LayoutParams(-1, -2))
         keyArea = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         root.addView(keyArea)
         renderKeys()
@@ -254,6 +262,7 @@ class CiyingInputMethodService : InputMethodService() {
         val request = ++generation
         query?.cancel(false)
         candidates.removeAllViews()
+        if (::specialDetail.isInitialized) specialDetail.visibility = View.GONE
         if (composing.isEmpty()) {
             candidates.addView(label(if (policy.privateInput) "私密输入 · 不记录选词" else if (english) "英文输入" else "词映 · 让词语照见世界", Color.rgb(96, 121, 107)))
             return
@@ -267,8 +276,16 @@ class CiyingInputMethodService : InputMethodService() {
             handler.post {
                 if (request != generation || composing.toString() != input) return@post
                 if (result.isFailure) candidates.addView(label("词库加载失败，请重启词映", ink))
-                result.getOrDefault(emptyList()).forEach { item ->
-                    val base = if (item.gloss.isBlank()) item.hanzi else "${item.hanzi}   ${item.gloss}"
+                val items = result.getOrDefault(emptyList())
+                items.firstOrNull { it.hanzi == "高梓皓" && it.gloss == SPECIAL_GAOZIHAO_TEXT }?.let { special ->
+                    specialDetail.text = "${special.hanzi}：${special.gloss}"
+                    specialDetail.visibility = View.VISIBLE
+                    specialDetail.setOnClickListener {
+                        if (!committing && composing.toString() == input) choose(special)
+                    }
+                }
+                items.forEach { item ->
+                    val base = if (item.gloss.isBlank() || item.gloss == SPECIAL_GAOZIHAO_TEXT) item.hanzi else "${item.hanzi}   ${item.gloss}"
                     val caption = base + if (item.correctedFrom != null) " · 纠错" else ""
                     candidates.addView(label(caption, ink).apply {
                         contentDescription = "${item.hanzi} ${item.gloss}"

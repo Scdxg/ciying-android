@@ -24,6 +24,26 @@ class PinyinConverterTest {
         override fun learned(key: String, word: String) = if (word == "妥协") bonus else 0
         override fun transition(before: String, next: String) = if (before.endsWith("参加") && next == "实践") 9.0 else 0.0
     })
+    @Test fun specialNameHasFixedRankAndCompleteDescription() {
+        val converter = PinyinConverter(object : Lexicon {
+            override fun exact(keys: List<String>) = emptyList<LexiconEntry>()
+            override fun completions(key: String, initials: Boolean) =
+                if (initials && key == "gzh") listOf(LexiconEntry("gongzhonghao", "gong zhong hao", "公众号", 1000, "public account"))
+                else emptyList()
+            override fun learned(key: String, word: String) = 100
+        })
+        val full = converter.lookup("gaozihao").first()
+        assertEquals("高梓皓", full.hanzi)
+        assertEquals(SPECIAL_GAOZIHAO_TEXT, full.gloss)
+        assertEquals(8, full.consumed)
+        val abbreviated = converter.lookup("gzh")
+        assertEquals("公众号", abbreviated[0].hanzi)
+        assertEquals("高梓皓", abbreviated[1].hanzi)
+        assertEquals(3, abbreviated[1].consumed)
+        assertEquals(SPECIAL_GAOZIHAO_TEXT, abbreviated[1].gloss)
+        assertEquals(1, abbreviated.count { it.hanzi == "高梓皓" })
+        assertTrue(converter.lookup("gaozi").none { it.gloss == SPECIAL_GAOZIHAO_TEXT })
+    }
     @Test fun homophonesHaveIndependentGlosses() {
         val result = engine().lookup("tuoxie")
         assertEquals(listOf("拖鞋", "妥协"), result.take(2).map { it.hanzi })

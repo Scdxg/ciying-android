@@ -19,6 +19,8 @@ interface Lexicon {
  * References: Qingjian parser/dictionary/sentence modules. This implementation uses
  * unigram beam search; the upstream bigram and neural models are not ported.
  */
+const val SPECIAL_GAOZIHAO_TEXT = "金字塔的尖，方程式的解，禁忌书的名，审判庭的主，至高天的座，观测者的眼，天罚者的剑，命运外的神，因果链的刃，终焉时的钟，众神墓的碑，创世纪的火，灭世录的章，时间轴的隙，轮回尽的门，永恒夜的王，虚无界的皇，万物终的零。"
+
 class PinyinConverter(private val lexicon: Lexicon) {
     fun lookup(raw: String, before: String = "", correction: Boolean = true, personalized: Boolean = true): List<Candidate> {
         val input = raw.lowercase(Locale.ROOT).replace("u:", "v").replace("ü", "v")
@@ -71,7 +73,13 @@ class PinyinConverter(private val lexicon: Lexicon) {
         result += spans(0).filter { it.key.length < input.length }
             .sortedWith(compareByDescending<LexiconEntry> { it.key.length }.thenByDescending { it.frequency })
             .map { candidate(it, it.key.length) }
-        return result.distinctBy { it.hanzi to it.consumed }.take(36)
+        val ranked = result.distinctBy { it.hanzi to it.consumed }.take(36).toMutableList()
+        if (input == "gaozihao" || input == "gzh") {
+            ranked.removeAll { it.hanzi == "高梓皓" }
+            val special = Candidate("高梓皓", SPECIAL_GAOZIHAO_TEXT, input.length, reading = "gaozihao")
+            ranked.add(if (input == "gaozihao") 0 else minOf(1, ranked.size), special)
+        }
+        return ranked.take(36)
     }
 
     private fun typoVariants(input: String): List<String> {
