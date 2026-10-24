@@ -77,6 +77,11 @@ class MainActivity : Activity() {
             (getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager).showInputMethodPicker()
         })
 
+        val personalization = section(page)
+        personalization.addView(text("个性化", 20f, ink, true))
+        personalization.addView(text("选择键盘颜色，或用自己的照片作背景。照片仅保存在本机。", 13f, muted))
+        personalization.addView(button("设置键盘外观", false) { showAppearance() })
+
         val tryCard = section(page)
         tryCard.addView(text("同一个读音，不同的意思", 20f, ink, true))
         tryCard.addView(text("公式   formula     /     公示   public notice", 14f, forest).apply {
@@ -127,6 +132,95 @@ class MainActivity : Activity() {
         val selected = Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD)?.startsWith(packageName + "/") == true
         status.text = if (selected) "词映已就绪" else if (enabled) "再切换一下，就能开始" else "准备好开始输入"
         statusDetail.text = if (selected) "你的下一句话，可以从这里开始。" else "按下面的步骤启用并切换到词映。"
+    }
+    private fun showAppearance() {
+        val modes = arrayOf("forest", "black", "white", "photo")
+        val labels = arrayOf("森林绿（默认）", "纯黑", "纯白", "选择照片背景")
+        AlertDialog.Builder(this).setTitle("键盘个性化")
+            .setSingleChoiceItems(labels, modes.indexOf(KeyboardAppearance.mode(this))) { dialog, index ->
+                dialog.dismiss()
+                if (index == 3) {
+                    try {
+                        startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                            type = "image/*"
+                            addCategory(Intent.CATEGORY_OPENABLE)
+                        }, 410)
+                    } catch (_: android.content.ActivityNotFoundException) {
+                        Toast.makeText(this, "未找到照片选择器", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    KeyboardAppearance.preferences(this).edit().putString("mode", modes[index]).apply()
+                    Toast.makeText(this, "已应用${labels[index]}，下次弹出键盘即可看到", Toast.LENGTH_SHORT).show()
+                }
+            }.setNegativeButton("关闭", null)
+            .setNeutralButton("移除照片") { _, _ ->
+                KeyboardAppearance.photo(this).delete()
+                if (KeyboardAppearance.mode(this) == "photo") {
+                    KeyboardAppearance.preferences(this).edit().putString("mode", "forest").apply()
+                }
+                Toast.makeText(this, "已移除本机照片背景", Toast.LENGTH_SHORT).show()
+            }.show()
+    }
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != 410 || resultCode != RESULT_OK) return
+        val uri = data?.data ?: return
+        Toast.makeText(this, "正在处理照片…", Toast.LENGTH_SHORT).show()
+        Thread {
+            val inputFile = java.io.File.createTempFile("keyboard-photo", ".source", cacheDir)
+            val outputFile = java.io.File(filesDir, "keyboard-photo.new")
+            val result = runCatching {
+                contentResolver.openInputStream(uri)?.use { input ->
+                    inputFile.outputStream().use { output ->
+                        val buffer = ByteArray(8192)
+                        var total = 0L
+                        while (true) {
+                            val count = input.read(buffer)
+                            if (count < 0) break
+                            total += count
+                            require(total <= 30L * 1024 * 1024) { "照片不能超过30MB" }
+                            output.write(buffer, 0, count)
+                        }
+                    }
+                } ?: error("无法读取照片")
+                val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                android.graphics.BitmapFactory.decodeFile(inputFile.path, bounds)
+                require(bounds.outWidth > 0 && bounds.outHeight > 0) { "不支持的图片格式" }
+                var sample = 1
+                while (maxOf(bounds.outWidth, bounds.outHeight) / sample > 1600) sample *= 2
+                val options = android.graphics.BitmapFactory.Options().apply { inSampleSize = sample }
+                val decoded = android.graphics.BitmapFactory.decodeFile(inputFile.path, options) ?: error("照片解码失败")
+                val orientation = runCatching { android.media.ExifInterface(inputFile.path)
+                    .getAttributeInt(android.media.ExifInterface.TAG_ORIENTATION, 1) }.getOrDefault(1)
+                val matrix = android.graphics.Matrix().apply {
+                    when (orientation) {
+                        2 -> setScale(-1f, 1f)
+                        3 -> setRotate(180f)
+                        4 -> setScale(1f, -1f)
+                        5 -> { setRotate(90f); postScale(-1f, 1f) }
+                        6 -> setRotate(90f)
+                        7 -> { setRotate(270f); postScale(-1f, 1f) }
+                        8 -> setRotate(270f)
+                    }
+                }
+                val bitmap = android.graphics.Bitmap.createBitmap(decoded, 0, 0, decoded.width, decoded.height, matrix, true)
+                try {
+                    outputFile.outputStream().use { require(bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, it)) }
+                    check(outputFile.renameTo(KeyboardAppearance.photo(this))) { "保存照片失败" }
+                } finally {
+                    if (bitmap !== decoded) bitmap.recycle()
+                    decoded.recycle()
+                }
+                KeyboardAppearance.preferences(this).edit().putString("mode", "photo").commit()
+            }
+            inputFile.delete(); outputFile.delete()
+            runOnUiThread {
+                if (!isFinishing && !isDestroyed) Toast.makeText(this,
+                    if (result.isSuccess) "照片背景已保存，下次弹出键盘生效" else result.exceptionOrNull()?.message ?: "照片处理失败",
+                    Toast.LENGTH_LONG).show()
+            }
+        }.start()
     }
     private fun showLicenses() {
         val content = text("", 13f).apply {

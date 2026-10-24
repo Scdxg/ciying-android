@@ -35,8 +35,12 @@ class CiyingInputMethodService : InputMethodService() {
     private var symbols = false
     private var shifted = false
     private var policy = EditorPolicy(false, false, false)
-    private val ink = Color.rgb(32, 55, 44)
-    private val green = Color.rgb(31, 103, 83)
+    private var appearanceMode = "forest"
+    private var palette = KeyboardAppearance.palette("forest")
+    private val ink get() = palette.ink
+    private lateinit var keyboardRoot: LinearLayout
+    private var appearanceToken = ""
+    private val green get() = if (appearanceMode == "forest") palette.accent else palette.ink
     private fun beforeCursor(): String {
         if (policy.privateInput) return ""
         return currentInputConnection?.getTextBeforeCursor(48, 0)?.toString().orEmpty()
@@ -66,6 +70,9 @@ class CiyingInputMethodService : InputMethodService() {
             setBackgroundColor(Color.rgb(232, 239, 235))
             setPadding(dp(4), 0, dp(4), dp(8))
         }
+        keyboardRoot = root
+        appearanceToken = ""
+        applyAppearance()
         candidates = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; minimumHeight = dp(48) }
         root.addView(HorizontalScrollView(this).apply {
             isHorizontalScrollBarEnabled = false
@@ -78,6 +85,26 @@ class CiyingInputMethodService : InputMethodService() {
         return root
     }
 
+    override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
+        super.onStartInputView(info, restarting)
+        applyAppearance()
+        if (::keyArea.isInitialized) { renderKeys(); refreshCandidates() }
+    }
+    private fun applyAppearance() {
+        val mode = KeyboardAppearance.mode(this)
+        val photo = KeyboardAppearance.photo(this)
+        val token = "$mode:${photo.lastModified()}"
+        if (appearanceToken == token) return
+        appearanceToken = token
+        appearanceMode = mode
+        palette = KeyboardAppearance.palette(mode)
+        if (::keyboardRoot.isInitialized) {
+            val bitmap = if (mode == "photo") runCatching { android.graphics.BitmapFactory.decodeFile(photo.path) }.getOrNull() else null
+            keyboardRoot.background = if (bitmap != null) KeyboardPhotoDrawable(bitmap)
+                else android.graphics.drawable.ColorDrawable(palette.background)
+        }
+        window?.window?.navigationBarColor = palette.background
+    }
     private fun renderKeys() {
         stopDeleting()
         keyArea.removeAllViews()
@@ -190,19 +217,19 @@ class CiyingInputMethodService : InputMethodService() {
         textSize = if (title.length > 1) 15f else 23f
         gravity = Gravity.CENTER
         includeFontPadding = false
-        setTextColor(if (accent) Color.WHITE else ink)
+        setTextColor(if (accent && appearanceMode == "forest") Color.WHITE else ink)
         layoutParams = LinearLayout.LayoutParams(0, dp(rowHeight() - 8), weight).apply {
             setMargins(dp(3), dp(4), dp(3), dp(4))
         }
-        val fill = if (accent) green else if (utility) Color.rgb(213, 227, 219) else Color.WHITE
+        val fill = if (accent) palette.accent else if (utility) palette.utility else palette.key
         background = StateListDrawable().apply {
-            addState(intArrayOf(android.R.attr.state_pressed), rounded(if (accent) Color.rgb(5, 143, 85) else Color.rgb(195, 203, 212)))
+            addState(intArrayOf(android.R.attr.state_pressed), rounded(palette.pressed))
             addState(intArrayOf(), rounded(fill))
         }
         elevation = dp(1).toFloat()
         setOnClickListener { if (committing) pendingKeys.add(action) else action() }
     }
-    private fun rounded(color: Int) = GradientDrawable().apply { setColor(color); cornerRadius = dp(6).toFloat() }
+    private fun rounded(color: Int) = GradientDrawable().apply { setColor(color); cornerRadius = dp(6).toFloat(); if (appearanceMode != "forest") setStroke(dp(1), if (appearanceMode == "white") 0xffdddddd.toInt() else 0xff444444.toInt()) }
     private fun appendPinyin(letter: String) {
         if (english) currentInputConnection?.commitText(letter, 1)
         else if (composing.length < 64) { composing.append(letter.lowercase()); updateComposing(); refreshCandidates() }
@@ -257,7 +284,7 @@ class CiyingInputMethodService : InputMethodService() {
         candidates.orientation = LinearLayout.HORIZONTAL
         candidates.layoutParams = android.widget.FrameLayout.LayoutParams(-2, -2)
         if (composing.isEmpty()) {
-            candidates.addView(label(if (policy.privateInput) "私密输入 · 不记录选词" else if (english) "英文输入" else "词映 · 让词语照见世界", Color.rgb(96, 121, 107)))
+            candidates.addView(label(if (policy.privateInput) "私密输入 · 不记录选词" else if (english) "英文输入" else "词映 · 让词语照见世界", ink))
             return
         }
         val input = composing.toString()
@@ -278,7 +305,7 @@ class CiyingInputMethodService : InputMethodService() {
                 var candidateRow = candidates
                 items.forEach { item ->
                     val special = item.gloss == SPECIAL_GAOZIHAO_TEXT
-                    val base = if (special) "${item.hanzi} ${item.gloss}" else if (item.gloss.isBlank()) item.hanzi else "${item.hanzi}   ${item.gloss}"
+                    val base = if (special) "${item.hanzi}：${item.gloss}" else if (item.gloss.isBlank()) item.hanzi else "${item.hanzi}   ${item.gloss}"
                     val caption = base + if (item.correctedFrom != null) " · 纠错" else ""
                     if (hasSpecial && !special && candidateRow === candidates) {
                         candidateRow = LinearLayout(this)
@@ -289,7 +316,7 @@ class CiyingInputMethodService : InputMethodService() {
                     }
                     (if (special) candidates else candidateRow).addView(label(caption, ink).apply {
                         if (special) {
-                            textSize = 13f
+                            textSize = 16f
                             setPadding(dp(12), dp(8), dp(12), dp(8))
                             layoutParams = LinearLayout.LayoutParams(resources.displayMetrics.widthPixels - dp(8), -2)
                             text = android.text.SpannableString(caption).apply {
