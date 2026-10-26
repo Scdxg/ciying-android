@@ -2,7 +2,7 @@
 
 Android 离线拼音输入法，在中文候选词旁显示英文释义。
 
-**[下载 0.3.3 测试版](https://github.com/Scdxg/ciying-android/releases/tag/v0.3.3-beta)** · [安装与兼容性](docs/INSTALL.md) · [开发文档](docs/DEVELOPMENT.md)
+**[下载 0.3.4 测试版](https://github.com/Scdxg/ciying-android/releases/tag/v0.3.4-beta)** · [安装与兼容性](docs/INSTALL.md) · [开发文档](docs/DEVELOPMENT.md)
 
 ## 主要功能
 
@@ -17,7 +17,7 @@ Android 离线拼音输入法，在中文候选词旁显示英文释义。
 2. 在手机上打开安装包，按系统提示确认安装。
 3. 打开词映，点击“启用词映输入法”，再点击“切换到词映”。
 
-Android 8.0 及以上；暂不支持 iPhone。当前为调试签名测试版。
+Android 8.0 及以上；暂不支持 iPhone。当前为正式签名测试版。
 
 **已在 Redmi K50 Pro 上验证，vivo、OPPO 及其他机型尚未真机验证。**安装确认、启用入口、安全键盘和界面尺寸可能随系统不同。部分词条暂无释义，英文释义供参考，复杂句子仍需选词。
 
